@@ -9,7 +9,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { BigNumber, ethers } from 'ethers';
+import { BigNumber, BigNumberish, ethers } from 'ethers';
 import React, { useCallback, useState } from 'react';
 import {
   AccountImplementations,
@@ -65,36 +65,29 @@ const SignTransactionConfirmation = ({
   const [showAddPaymasterUI, setShowAddPaymasterUI] = useState<boolean>(false);
   const [addPaymasterLoader, setAddPaymasterLoader] = useState<boolean>(false);
   const [paymasterError, setPaymasterError] = useState<string>('');
-  const [paymasterUrl, setPaymasterUrl] = useState<string>('');
+  const [paymasterAndData, setPaymasterAndData] = useState<string>('0x');
   const backgroundDispatch = useBackgroundDispatch();
 
   const addPaymaster = useCallback(async () => {
-    console.log(paymasterUrl);
+    console.log(paymasterAndData);
     setAddPaymasterLoader(true);
-    if (paymasterUrl) {
-      const paymasterRPC = new ethers.providers.JsonRpcProvider(paymasterUrl, {
-        name: 'Paymaster',
-        chainId: parseInt(activeNetwork.chainID),
-      });
-      try {
-        const paymasterResp = await paymasterRPC.send(
-          'eth_getPaymasterAndDataSize',
-          [userOp]
-        );
-        backgroundDispatch(
-          setUnsignedUserOperation({
-            ...userOp,
-            paymasterAndData: paymasterResp,
-            verificationGasLimit: paymasterResp.verificationGasLimit,
-          })
-        );
-      } catch (e) {
-        console.log(e);
-        setPaymasterError('Paymaster url returned error');
-      }
-      setAddPaymasterLoader(false);
+    if (paymasterAndData) {
+      let vgl: BigNumberish = await userOp.verificationGasLimit;
+      console.log(vgl);
+      console.log(typeof vgl);
+      const bnValue = BigNumber.from(vgl);
+      vgl = bnValue.mul(5);
+      backgroundDispatch(
+        setUnsignedUserOperation({
+          ...userOp,
+          paymasterAndData: paymasterAndData,
+          verificationGasLimit: vgl.toString(),
+        })
+      );
     }
-  }, [activeNetwork.chainID, backgroundDispatch, paymasterUrl, userOp]);
+    setAddPaymasterLoader(false);
+    setShowAddPaymasterUI(false);
+  }, [activeNetwork.chainID, backgroundDispatch, paymasterAndData, userOp]);
 
   return (
     <Container>
@@ -126,10 +119,10 @@ const SignTransactionConfirmation = ({
         {showAddPaymasterUI && (
           <Paper sx={{ p: 2 }}>
             <TextField
-              value={paymasterUrl}
-              onChange={(e) => setPaymasterUrl(e.target.value)}
+              value={paymasterAndData}
+              onChange={(e) => setPaymasterAndData(e.target.value)}
               sx={{ width: '100%' }}
-              label="Paymaster URL"
+              label="Paymaster and data"
               variant="standard"
             />
             {paymasterError}
