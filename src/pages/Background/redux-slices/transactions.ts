@@ -177,15 +177,26 @@ export const sendTransaction = createBackgroundAsyncThunk(
     const root = ethers.utils.randomBytes(32);
     const inputNullifiers = [ethers.utils.randomBytes(32), ethers.utils.randomBytes(32)];
     const outputCommitments = [ethers.utils.randomBytes(32), ethers.utils.randomBytes(32)];
-    const recipient = oldUnsignedUserOp!.sender;
-    const extAmount = (ethers.utils.parseEther('1')).mul(-1);
-    const proof = '0xabcdef0123456789';
-    // Create an instance of the ethers.utils.defaultAbiCoder
-    const abiCoder = ethers.utils.defaultAbiCoder;
+    const recipient = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"; // Replace with the actual recipient address
+    const extAmount = ethers.utils.parseEther("1").mul(-1);
+    const proof = "0xabcdef0123456789";
+
+    // Encode the arrays individually
+    const encodedInputNullifiers = inputNullifiers.map((inputNullifier) =>
+      ethers.utils.solidityPack(["bytes32"], [inputNullifier])
+    );
+    const encodedOutputCommitments = outputCommitments.map((outputCommitment) =>
+      ethers.utils.solidityPack(["bytes32"], [outputCommitment])
+    );
+
     // Encode the data
-    const paymasterData = abiCoder.encode(
-      ['address', 'bytes32', 'bytes32[2]', 'bytes32[2]', 'address', 'int256', 'bytes'],
-      [paymasterAddress, root, inputNullifiers, outputCommitments, recipient, extAmount, proof]
+    const paymasterData = ethers.utils.solidityPack(
+      ["address", "bytes32"],
+      [paymasterAddress, root]
+    ).concat(
+      encodedInputNullifiers.join(""),
+      encodedOutputCommitments.join(""),
+      ethers.utils.solidityPack(["address", "int256", "bytes"], [recipient, extAmount, proof])
     );
 
     // update the unsignedUserOp
