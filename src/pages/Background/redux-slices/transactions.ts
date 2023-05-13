@@ -1,6 +1,7 @@
 import { UserOperationStruct } from '@account-abstraction/contracts';
 import { createSlice } from '@reduxjs/toolkit';
 import { RootState } from '.';
+import { ethers } from 'ethers';
 import KeyringService from '../services/keyring';
 import ProviderBridgeService, {
   EthersTransactionRequest,
@@ -169,7 +170,34 @@ export const sendTransaction = createBackgroundAsyncThunk(
     ) as KeyringService;
 
     const state = mainServiceManager.store.getState() as RootState;
-    const unsignedUserOp = state.transactions.unsignedUserOperation;
+    const oldUnsignedUserOp = state.transactions.unsignedUserOperation;
+
+    // Define the data values
+    const paymasterAddress = "0xCaaaDebF13BD0173eA21C2AC944AfA97dc461de6";
+    const root = ethers.utils.randomBytes(32);
+    const inputNullifiers = [ethers.utils.randomBytes(32), ethers.utils.randomBytes(32)];
+    const outputCommitments = [ethers.utils.randomBytes(32), ethers.utils.randomBytes(32)];
+    const recipient = oldUnsignedUserOp!.sender;
+    const extAmount = (ethers.utils.parseEther('1')).mul(-1);
+    const proof = '0xabcdef0123456789';
+    // Create an instance of the ethers.utils.defaultAbiCoder
+    const abiCoder = ethers.utils.defaultAbiCoder;
+    // Encode the data
+    const paymasterData = abiCoder.encode(
+      ['address', 'bytes32', 'bytes32[2]', 'bytes32[2]', 'address', 'int256', 'bytes'],
+      [paymasterAddress, root, inputNullifiers, outputCommitments, recipient, extAmount, proof]
+    );
+
+    // update the unsignedUserOp
+    const unsignedUserOp = {
+      ...oldUnsignedUserOp,
+      paymasterAndData: paymasterData,
+      verificationGasLimit: 8_000_000,
+    };
+
+    console.log("New unsignedUserOp: ", unsignedUserOp);
+
+
     const origin = state.transactions.requestOrigin;
 
     if (unsignedUserOp) {
